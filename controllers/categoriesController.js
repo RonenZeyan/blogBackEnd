@@ -15,7 +15,7 @@ module.exports.createCategory = asyncHandler(async (req, res) => {
         return res.status(400).json({ message: error.details[0].message });
     }
     const category = await Category.create({
-        user: req.user.id,
+        user: req.user,
         title: req.body.title,
     })
     res.status(201).json(category)

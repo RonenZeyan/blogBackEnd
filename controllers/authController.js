@@ -2,6 +2,7 @@
 const asyncHandler = require("express-async-handler");
 const bcrypt = require("bcryptjs");
 const { User, validateLoginUser, validateRegisterUser } = require("../models/User");
+const { Notification } = require("../models/Notification");
 
 
 /**
@@ -18,7 +19,7 @@ const register = asyncHandler(async (req, res) => {
     }
 
     //check if user already registered
-    let user = await User.findOne({ email: req.body.email }); 
+    let user = await User.findOne({ email: req.body.email });
     if (user) {
         return res.status(400).json({ message: "User Already Exist" })
     }
@@ -30,15 +31,15 @@ const register = asyncHandler(async (req, res) => {
     //add new User to DB
 
     user = new User({
-        username:req.body.username,
-        email:req.body.email,
-        password:hashedPassword,
+        username: req.body.username,
+        email: req.body.email,
+        password: hashedPassword,
     });
 
     await user.save();
 
     //return response to Client/FrontEnd
-    res.status(201).json({message:"You Registered Successfully,Please SignIn"});
+    res.status(201).json({ message: "You Registered Successfully,Please SignIn" });
 });
 
 
@@ -62,22 +63,22 @@ const login = asyncHandler(async (req, res) => {
     }
 
     //compare hashed the password with sended password
-    const isPasswordCorrect = await bcrypt.compare(req.body.password,user.password)
-    if(!isPasswordCorrect){
-       return res.status(404).json({message:"Email or Password Invalid"});
+    const isPasswordCorrect = await bcrypt.compare(req.body.password, user.password)
+    if (!isPasswordCorrect) {
+        return res.status(404).json({ message: "Email or Password Invalid" });
     }
     //generate Token
     const token = user.generateAuthToken();
 
     //get fields without password
-    const {password,...otherFieldsUser} = user._doc;
+    const { password, ...otherFieldsUser } = user._doc;
 
     //return response to Client/FrontEnd        
-    res.status(200).json({...otherFieldsUser,token});
+    res.status(200).json({ ...otherFieldsUser, token });
 });
 
 
-module.exports= {
+module.exports = {
     register,
     login,
 }

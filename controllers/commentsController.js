@@ -2,14 +2,10 @@
 const asyncHandler = require("express-async-handler");
 const { Comment, validateCreateComment, validateUpdateComment } = require("../models/Comment");
 const { User } = require("../models/User");
-
-
-/**
- * @description Create New Comment
- * @router /api/comments
- * @method POST
- * @access private (only user himself)
- */
+const { Notification } = require("../models/Notification");
+const { Post } = require("../models/Post");
+const { Socket } = require("socket.io");
+const { userSocketMap } = require("../config/connectToSocket");
 
 module.exports.createComment = asyncHandler(async (req, res) => {
 
@@ -27,10 +23,35 @@ module.exports.createComment = asyncHandler(async (req, res) => {
         username: userProfile.username,
     });
 
+    const post = await Post.findById(req.body.postId);
+
+        const notification = new Notification({
+        userId: post.user,
+        senderId:req.user.id,
+        postId: req.body.postId,
+        commentId: comment._id,
+        type: "Comment",
+    });
+
+    await notification.save();
+
+    sendNotif(userSocketMap[post.user],req,notification);
+
     res.status(201).json(comment);
 
 });
 
+function sendNotif(recipientSocketId,req,notification) {
+    const io = req.app.get("socketio");
+    if (recipientSocketId) {
+        io.to(recipientSocketId).emit("newNotification", {
+            data: notification,
+            message: "A new comment was posted on your post!",
+        });
+    } else {
+        console.log(`User ${recipientSocketId} is not connected`);
+    }
+}
 
 
 /**
@@ -84,18 +105,18 @@ module.exports.updateComment = asyncHandler(async (req, res) => {
     }
 
     const comment = await Comment.findById(req.params.id);
-    if(!comment){
-        return res.status(404).json({message:"Comment Not Founded"});
+    if (!comment) {
+        return res.status(404).json({ message: "Comment Not Founded" });
     }
 
-    if(req.user.id !== comment.user.toString()){
-        return res.status(403).json({message:"access denied, only user himself can edit his comment"});
+    if (req.user.id !== comment.user.toString()) {
+        return res.status(403).json({ message: "access denied, only user himself can edit his comment" });
     }
 
-    const updatedComment = await Comment.findByIdAndUpdate(req.params.id,{
-        $set:{
-            text:req.body.text,
+    const updatedComment = await Comment.findByIdAndUpdate(req.params.id, {
+        $set: {
+            text: req.body.text,
         }
-    },{new:true})  //new True that mean return the updated Comment
+    }, { new: true })  //new True that mean return the updated Comment
     res.status(200).json(updatedComment);
 });
