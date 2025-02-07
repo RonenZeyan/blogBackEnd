@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const joi = require("joi")
 const jwt = require("jsonwebtoken");
+const passwordComplexity = require("joi-password-complexity");
 
 
 const userSchema = new mongoose.Schema({
@@ -45,15 +46,15 @@ const userSchema = new mongoose.Schema({
 },
     {
         timestamps: true,
-        toJSON: {virtuals:true},
-        toObject: {virtuals:true},
+        toJSON: { virtuals: true },
+        toObject: { virtuals: true },
     });
 
 //populate posts that belong to the user 
-userSchema.virtual("posts",{
-    ref:"Post",
+userSchema.virtual("posts", {
+    ref: "Post",
     foreignField: "user",
-    localField:"_id",
+    localField: "_id",
 })
 
 //generate token 
@@ -70,7 +71,7 @@ function validateRegisterUser(obj) {
     const schema = joi.object({
         username: joi.string().min(2).max(200).trim().required(),
         email: joi.string().min(5).max(100).trim().required().email(),
-        password: joi.string().min(8).trim().required(),
+        password: passwordComplexity().required(),  //password complexity wont let user make a weak password
     })
     return schema.validate(obj);
 }
@@ -88,7 +89,7 @@ function validateLoginUser(obj) {
 function validateUpdateUser(obj) {
     const schema = joi.object({
         username: joi.string().min(2).max(200).trim(),
-        password: joi.string().min(8).trim(),
+        password: passwordComplexity(),
         bio: joi.string(),
     })
     return schema.validate(obj);

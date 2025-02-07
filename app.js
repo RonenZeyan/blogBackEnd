@@ -2,6 +2,10 @@
 const express = require("express");
 const http = require("http");
 const connectToDB = require("./config/connectToDB");
+const xss = require("xss-clean"); //using for stop xss attack
+const helmet = require("helmet");
+const hpp = require("hpp");
+const rateLimiting = require("express-rate-limit");
 const { errorHandler, notFound } = require("./middlewares/error");
 require("dotenv").config();
 const cors = require("cors");
@@ -13,7 +17,23 @@ connectToDB();
 
 const app = express();
 
+//middlewares
 app.use(express.json());
+
+//helmet (add security Headers)
+app.use(helmet());
+
+//hpp (prevent http param pollution)
+app.use(hpp());
+
+//prevent XSS attacks
+app.use(xss());
+
+//rate limiting
+app.use(rateLimiting({
+    windowMs: 10*60*1000, //that mean 10 mins (convert to ms)
+    max:200, //user can send up to 200 requests in 10 mins (if more he will get denied with status error 429)
+}));
 
 app.use(cors({
     origin: "http://localhost:3000"
@@ -31,10 +51,10 @@ app.use("/api/messages", require("./routes/messagesRoute"));
 app.use(notFound);
 app.use(errorHandler);
 
-// יצירת שרת HTTP
+//create http server
 const server = http.createServer(app);
 
-// הפעלת ה-Socket.IO
+// run socket io
 const io = initSocketIO(server);
 app.set("socketio", io);
 

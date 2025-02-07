@@ -6,6 +6,8 @@ const fs = require("fs");
 const { cloudinaryRemoveImage, cloudinaryUploadImage } = require("../utils/cloudinary");
 const { Post, validateUpdatePost, validateCreatePost } = require("../models/Post");
 const { Comment } = require("../models/Comment");
+const { Notification } = require("../models/Notification");
+const { userSocketMap } = require("../config/connectToSocket");
 
 /**
  * @description Create New Post
@@ -180,6 +182,7 @@ module.exports.updatePost = asyncHandler(async (req, res) => {
             category: req.body.category,
         }
     }, { new: true }).populate("user", ["-password"])
+        .populate("comments");
 
     res.status(200).json(updatedPost)
 });
@@ -253,12 +256,43 @@ module.exports.toggleLike = asyncHandler(async (req, res) => {
         post = await Post.findByIdAndUpdate(postId, {
             $pull: { likes: loggedInUser, }  //if user already liked then we make unliked 
         }, { new: true });
+
+        //delete notification from db
+        await Notification.deleteOne({
+            userId: post.user,
+            senderId: req.user.id,
+            postId: postId,
+            type: "Like"
+        })
     } else {
         post = await Post.findByIdAndUpdate(postId, {
             $push: { likes: loggedInUser, }
         }, { new: true });
+
+        const notification = new Notification({
+            userId: post.user,
+            senderId: req.user.id,
+            postId,
+            type: "Like",
+        });
+
+        await notification.save();
+
+        sendNotif(userSocketMap[post.user], req, notification);
     }
     res.status(200).json(post);
 });
 
 
+
+function sendNotif(recipientSocketId, req, notification) {
+    const io = req.app.get("socketio");
+    if (recipientSocketId) {
+        io.to(recipientSocketId).emit("newNotification", {
+            data: notification,
+            message: "A new Like was posted on your post!",
+        });
+    } else {
+        console.log(`User ${recipientSocketId} is not connected`);
+    }
+}

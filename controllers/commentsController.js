@@ -6,6 +6,7 @@ const { Notification } = require("../models/Notification");
 const { Post } = require("../models/Post");
 const { Socket } = require("socket.io");
 const { userSocketMap } = require("../config/connectToSocket");
+const { sendNotif } = require("../services/socketServices");
 
 module.exports.createComment = asyncHandler(async (req, res) => {
 
@@ -25,9 +26,9 @@ module.exports.createComment = asyncHandler(async (req, res) => {
 
     const post = await Post.findById(req.body.postId);
 
-        const notification = new Notification({
+    const notification = new Notification({
         userId: post.user,
-        senderId:req.user.id,
+        senderId: req.user.id,
         postId: req.body.postId,
         commentId: comment._id,
         type: "Comment",
@@ -35,23 +36,23 @@ module.exports.createComment = asyncHandler(async (req, res) => {
 
     await notification.save();
 
-    sendNotif(userSocketMap[post.user],req,notification);
+    sendNotif(userSocketMap[post.user], req, notification);
 
     res.status(201).json(comment);
 
 });
 
-function sendNotif(recipientSocketId,req,notification) {
-    const io = req.app.get("socketio");
-    if (recipientSocketId) {
-        io.to(recipientSocketId).emit("newNotification", {
-            data: notification,
-            message: "A new comment was posted on your post!",
-        });
-    } else {
-        console.log(`User ${recipientSocketId} is not connected`);
-    }
-}
+// function sendNotif(recipientSocketId, req, notification) {
+//     const io = req.app.get("socketio");
+//     if (recipientSocketId) {
+//         io.to(recipientSocketId).emit("newNotification", {
+//             data: notification,
+//             message: "A new comment was posted on your post!",
+//         });
+//     } else {
+//         console.log(`User ${recipientSocketId} is not connected`);
+//     }
+// }
 
 
 /**

@@ -8,7 +8,7 @@ const router = express.Router();
 
 const validateObjectId = require("../middlewares/validateObjectId");
 const { verifyTokenUser, verifyToken } = require("../middlewares/verifyToken");
-const { sendNewMessage, replyMessage, getMessagesWithUser, getSpecificMessage, getAllMessages } = require("../controllers/messagesController");
+const { sendNewMessage, replyMessage, getMessagesWithUser, getSpecificMessage, getAllMessages, getUnreadedMessages, setMessagesReaded } = require("../controllers/messagesController");
 
 
 // /api/messages
@@ -16,6 +16,9 @@ const { sendNewMessage, replyMessage, getMessagesWithUser, getSpecificMessage, g
 router.route("/")
     .get(verifyToken, getAllMessages)
     .post(verifyToken, sendNewMessage);
+
+router.route("/unreaded-messages")
+    .get(verifyToken, getUnreadedMessages);
 
 // /api/messages/:id
 router.route("/:id")
@@ -25,6 +28,7 @@ router.route("/:id")
 router.route("/message/:id")
     .get(validateObjectId, verifyToken, getSpecificMessage);
 
-
+router.route("/readed/:id")
+    .put(validateObjectId,verifyToken,setMessagesReaded);
 
 module.exports = router;

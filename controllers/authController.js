@@ -3,6 +3,8 @@ const asyncHandler = require("express-async-handler");
 const bcrypt = require("bcryptjs");
 const { User, validateLoginUser, validateRegisterUser } = require("../models/User");
 const { Notification } = require("../models/Notification");
+const VerificationTokenModel = require("../models/VerificationToken");
+const crypto = require("crypto");
 
 
 /**
@@ -37,6 +39,23 @@ const register = asyncHandler(async (req, res) => {
     });
 
     await user.save();
+
+    ////////////////sending email verify///////////
+
+    //creating new verificationToken & save to db 
+    const verificationToken = new VerificationTokenModel({
+        userId: user._id,
+        token: crypto.randomBytes(32).toString("hex"),  //giving random number
+    })
+
+    //making the link
+    const link = `http:localhost:3000/users/${user.id}/verify/${verificationToken.token}`
+
+    //putting into HTML TEMPLATE
+
+    //sending to email to the user
+
+    //response to the client
 
     //return response to Client/FrontEnd
     res.status(201).json({ message: "You Registered Successfully,Please SignIn" });

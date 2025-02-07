@@ -10,7 +10,7 @@ const notificationSchema = new mongoose.Schema({
         ref: "Post",
         required: true,
     },
-    senderId:{
+    senderId: {
         type: mongoose.Schema.ObjectId,
         ref: "User",
         required: true,
@@ -23,7 +23,7 @@ const notificationSchema = new mongoose.Schema({
     commentId: {
         type: mongoose.Schema.ObjectId,
         ref: "Comment",
-        required: true,
+        default: null,
     },
     type: {
         type: String,

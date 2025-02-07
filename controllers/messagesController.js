@@ -1,8 +1,16 @@
 
 const asyncHandler = require("express-async-handler");
 const { Message } = require("../models/message");
+const { userSocketMap } = require("../config/connectToSocket");
+const { sendMsgNotif } = require("../services/socketServices");
 
 
+// /**
+//  * @description get all messages of user
+//  * @router /api/messages/:id
+//  * @method get
+//  * @access private (only user himself)
+//  */
 module.exports.getAllMessages = asyncHandler(async (req, res) => {
     const messages = await Message.find({
         $or: [
@@ -10,9 +18,10 @@ module.exports.getAllMessages = asyncHandler(async (req, res) => {
             { receiverId: req.user.id },
         ],
     })
+        .sort({ createdAt: -1 })
         .populate("senderId", "username")
-        .populate("receiverId", "username")
-        .select("title senderId receiverId _id");
+        .populate("receiverId", "username");
+    // .select("title senderId receiverId _id");
 
     // no messages founded
     if (!messages || messages.length === 0) {
@@ -25,6 +34,61 @@ module.exports.getAllMessages = asyncHandler(async (req, res) => {
         messages,
     );
 })
+
+
+// /**
+//  * @description get unreaded messages
+//  * @router /api/messages/:id
+//  * @method get
+//  * @access private (only user himself)
+//  */
+module.exports.getUnreadedMessages = asyncHandler(async (req, res) => {
+    const messages = await Message.find(
+        { receiverId: req.user.id, isRead: false })
+        .sort({ createdAt: -1 })
+        .populate("senderId", "username")
+        .populate("receiverId", "username");
+
+    // no messages founded
+    if (!messages || messages.length === 0) {
+        res.status(404).json({
+            message: "no messages founded"
+        })
+    }
+    //send results
+    res.status(200).json(
+        messages,
+    );
+})
+
+// /**
+//  * @description Set Messages Readed
+//  * @router /api/messages
+//  * @method put
+//  * @access private (only user himself)
+//  */
+module.exports.setMessagesReaded = asyncHandler(async (req, res) => {
+    
+    const message = await Message.findById(req.params.id);
+    // no message founded
+    if (!message) {
+        return res.status(404).json({
+            message: "no messages founded"
+        })
+    }
+
+    //set messages Readed
+
+    await message.updateOne({ $set: { isRead: true } })
+    const updatedMessage = await Message.findById(req.params.id);
+
+
+    //send results
+    res.status(200).json(
+        updatedMessage,
+    );
+})
+
 
 // /**
 //  * @description all messages between you and another user 
@@ -106,6 +170,7 @@ module.exports.sendNewMessage = asyncHandler(async (req, res) => {
 
     await newMessage.save();
 
+    sendMsgNotif(userSocketMap[req.body.receiverId], req, newMessage);
 
     //send result that send success 
     res.status(201).json({
@@ -139,9 +204,26 @@ module.exports.replyMessage = asyncHandler(async (req, res) => {
 
     await message.save();
 
+    //send RealTime msg notification
+    sendMsgNotif(userSocketMap[req.body.receiverId], req, message);
+
+
     //send result that send success 
     res.status(201).json({
         message: "Your reply was sent successfully.",
         data: message,
     });
 });
+
+
+// function sendMsgNotif(recipientSocketId, req, _message) {
+//     const io = req.app.get("socketio");
+//     if (recipientSocketId) {
+//         io.to(recipientSocketId).emit("newMessage", {
+//             data: _message,
+//             message: "A new Message Received!",
+//         });
+//     } else {
+//         console.log(`User ${recipientSocketId} is not connected`);
+//     }
+// }
